@@ -12,8 +12,8 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/v-oidd/chat-tracker/m
 
 ## Controls
 
-- **Shift + B**: Toggle the chat logger window
-- **?**: Toggle the help panel inside the UI
+- **Shift + B**: Toggle the window
+- **?**: Toggle the help panel
 - **X**: Destroy the GUI
 
 ## Features
