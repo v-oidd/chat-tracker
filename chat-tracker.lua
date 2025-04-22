@@ -170,8 +170,8 @@ local function createControlButton(name, text, order)
 end
 
 local ColorToggleButton = createControlButton("ColorToggleButton", "Colors: ON", 1)
-local CopyButton = createControlButton("CopyButton", "Copy Chat", 2)
-local HighlightButton = createControlButton("HighlightButton", "Highlight: OFF", 3)
+local HighlightButton = createControlButton("HighlightButton", "Highlight: OFF", 2)
+local CopyButton = createControlButton("CopyButton", "Copy Chat", 3)
 
 local ChatMessages = {}
 local FilteredMessages = {}
