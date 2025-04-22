@@ -20,6 +20,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/v-oidd/chat-tracker/m
 
 - Real-time logging of messages
 - Search and filter by keywords, teams (`%team`), players (`?name`), exact words (`*word`), and Boolean operators (AND, OR, NOT)
+- Messages are color-coded by team
 
 ## License
 
