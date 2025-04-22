@@ -186,7 +186,7 @@ end
 local function populateHelpContent()
     createHelpSection("Basic Usage", "Press Shift+B to toggle the window\nDrag the title bar to move the window", 1)
 
-    createHelpSection("Search Filters", "You can use special filters in the search bar:\n• Type text to find messages containing that text\n• Use quotes for phrases: \"hello world\"\n• Team filter: %Team (e.g., %red)\n• Player filter: ?Name (e.g., ?John)\n• Word filter: *word (matches whole word only)", 2)
+    createHelpSection("Search Filters", "You can use special filters in the search bar:\n• Type text to find messages containing that text\n• Use quotes for phrases: \"hello world\"\n• Team filter: %team (e.g., %red)\n• Player filter: ?name (e.g., ?john)\n• Word filter: *word (matches whole word only)", 2)
 
     createHelpSection("Search Operators", "Combine search terms with operators:\n• AND: requires both terms (e.g., hello AND world)\n• OR: matches either term (e.g., hello OR world)\n• NOT: excludes matches (e.g., hello AND NOT world)\n• Parentheses for grouping: (hello OR hi) AND world\nMultiple terms have an implicit OR between them\nSearches are case insensitive, except operators must be UPPERCASE", 3)
 
