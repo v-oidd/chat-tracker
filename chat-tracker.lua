@@ -6,7 +6,8 @@ local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
-local MAX_MESSAGES = 1000
+getgenv().MAX_MESSAGES = MAX_MESSAGES or 500
+
 local connections = {}
 
 local ChatLoggerGui = Instance.new("ScreenGui")
