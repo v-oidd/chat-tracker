@@ -16,8 +16,8 @@ ChatLoggerGui.DisplayOrder = 100
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 350, 0, 300)
-MainFrame.Position = UDim2.new(0.5, -175, 0.5, -150)
+MainFrame.Size = UDim2.new(0, 350, 0, 330) 
+MainFrame.Position = UDim2.new(0.5, -175, 0.5, -165) 
 MainFrame.BackgroundColor3 = Color3.fromRGB(34, 34, 36)
 MainFrame.BorderSizePixel = 0
 MainFrame.Parent = ChatLoggerGui
@@ -69,7 +69,7 @@ CloseButton.Parent = TitleBar
 
 local HelpPanel = Instance.new("Frame")
 HelpPanel.Name = "HelpPanel"
-HelpPanel.Size = UDim2.new(1, -10, 1, -34)
+HelpPanel.Size = UDim2.new(1, -10, 1, -64) 
 HelpPanel.Position = UDim2.new(0, 5, 0, 29)
 HelpPanel.BackgroundColor3 = Color3.fromRGB(40, 40, 42)
 HelpPanel.BorderSizePixel = 0
@@ -119,7 +119,7 @@ SearchBar.Parent = SearchBarFrame
 
 local ChatLogScrollFrame = Instance.new("ScrollingFrame")
 ChatLogScrollFrame.Name = "ChatLogScrollFrame"
-ChatLogScrollFrame.Size = UDim2.new(1, -10, 1, -60)
+ChatLogScrollFrame.Size = UDim2.new(1, -10, 1, -90) 
 ChatLogScrollFrame.Position = UDim2.new(0, 5, 0, 56)
 ChatLogScrollFrame.BackgroundColor3 = Color3.fromRGB(34, 34, 36)
 ChatLogScrollFrame.BorderSizePixel = 0
@@ -135,9 +135,49 @@ UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 2)
 UIListLayout.Parent = ChatLogScrollFrame
 
+local ControlBar = Instance.new("Frame")
+ControlBar.Name = "ControlBar"
+ControlBar.Size = UDim2.new(1, 0, 0, 40) 
+ControlBar.Position = UDim2.new(0, 0, 1, -30) 
+ControlBar.BackgroundColor3 = Color3.fromRGB(26, 26, 28)
+ControlBar.BorderSizePixel = 0
+ControlBar.Parent = MainFrame
+
+local ControlLayout = Instance.new("UIListLayout")
+ControlLayout.Name = "ControlLayout"
+ControlLayout.FillDirection = Enum.FillDirection.Horizontal
+ControlLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+ControlLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+ControlLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ControlLayout.Padding = UDim.new(0, 10)
+ControlLayout.Parent = ControlBar
+
+local function createControlButton(name, text, order)
+    local button = Instance.new("TextButton")
+    button.Name = name
+    button.Size = UDim2.new(0, 100, 0, 24)
+    button.BackgroundColor3 = Color3.fromRGB(50, 50, 52)
+    button.BorderSizePixel = 0
+    button.Text = text
+    button.TextColor3 = Color3.fromRGB(240, 240, 240)
+    button.TextSize = 12
+    button.Font = Enum.Font.SourceSansBold
+    button.LayoutOrder = order
+    button.AutoButtonColor = true
+
+    button.Parent = ControlBar
+    return button
+end
+
+local ColorToggleButton = createControlButton("ColorToggleButton", "Colors: ON", 1)
+local CopyButton = createControlButton("CopyButton", "Copy Chat", 2)
+local HighlightButton = createControlButton("HighlightButton", "Highlight: OFF", 3)
+
 local ChatMessages = {}
 local FilteredMessages = {}
 local shouldAutoScroll = true
+local colorCodingEnabled = true
+local highlightEnabled = false
 
 local function track(conn)
     table.insert(connections, conn)
@@ -192,7 +232,9 @@ local function populateHelpContent()
 
     createHelpSection("Examples", "• Find messages from RedTeam: %red\n• Find messages from player starting with \"J\": ?j\n• Find \"hello\" but not \"world\": hello AND NOT world\n• Find messages about food from Team Red: %red AND (pizza OR burger)", 4)
 
-    HelpScrollFrame.CanvasSize = UDim2.new(0, 0, 0, HelpContentLayout.AbsoluteContentSize.Y + 20)
+    createHelpSection("Controls", "• Colors: Toggle team color indicators\n• Copy Chat: Copy filtered messages to clipboard\n• Highlight: Toggle highlighting of filtered messages", 5)
+
+    HelpScrollFrame.CanvasSize = UDim2.new(0, 0, 0, HelpContentLayout.AbsoluteContentSize.Y + 10)
 end
 
 local function createChatMessageEntry(player, message, teamColor)
@@ -258,12 +300,14 @@ local function createMessageElement(messageData)
     TeamColorIndicator.Position = UDim2.new(0, 45, 0, 2)
     TeamColorIndicator.BackgroundColor3 = messageData.teamColor
     TeamColorIndicator.BorderSizePixel = 0
+    TeamColorIndicator.Visible = colorCodingEnabled
     TeamColorIndicator.Parent = inner
 
     local PlayerAndMessage = Instance.new("TextLabel")
     PlayerAndMessage.Name = "PlayerAndMessage"
     PlayerAndMessage.Size = UDim2.new(1, -80, 0, 0)
-    PlayerAndMessage.Position = UDim2.new(0, 53, 0, 2)
+    local xOffset = colorCodingEnabled and 53 or 45
+    PlayerAndMessage.Position = UDim2.new(0, xOffset, 0, 2)
     PlayerAndMessage.BackgroundTransparency = 1
     PlayerAndMessage.Text = string.format("[%s]: %s", messageData.playerName, messageData.message)
     PlayerAndMessage.TextColor3 = Color3.fromRGB(240, 240, 240)
@@ -343,7 +387,6 @@ local function tokenize(str)
 
     return out
 end
-
 
 local function parseExpression(tokens)
     local pos = 1
@@ -489,19 +532,13 @@ end
 local displayedWrappers = {}
 
 local function updateMessageDisplay()
-    local want = {}
-    for _, msgData in ipairs(FilteredMessages) do
-        want[msgData] = true
+
+    local passesFilter = {}
+    for _, msg in ipairs(FilteredMessages) do
+        passesFilter[msg] = true
     end
 
-    for msgData, wrapper in pairs(displayedWrappers) do
-        if not want[msgData] then
-            wrapper:Destroy()
-            displayedWrappers[msgData] = nil
-        end
-    end
-
-    for index, msgData in ipairs(FilteredMessages) do
+    for idx, msgData in ipairs(ChatMessages) do
         local wrapper = displayedWrappers[msgData]
         if not wrapper then
             wrapper = createMessageElement(msgData)
@@ -515,12 +552,46 @@ local function updateMessageDisplay()
                 }):Play()
                 msgData.tweened = true
             end
+        end
+
+        wrapper.LayoutOrder = idx
+
+        local inner = wrapper:FindFirstChild("InnerFrame")
+        local indicator = inner:FindFirstChild("TeamColorIndicator")
+        if indicator then
+            indicator.Visible = colorCodingEnabled
+        end
+
+        local label = inner:FindFirstChild("PlayerAndMessage")
+        if label then
+            local xOffset = colorCodingEnabled and 53 or 45
+            label.Position = UDim2.new(0, xOffset, 0, 2)
+        end
+
+        if highlightEnabled then
+
+            wrapper.Visible = true
+            if passesFilter[msgData] then
+                inner.BackgroundTransparency = 0.8
+                inner.BackgroundColor3 = Color3.fromRGB(255,255,0)
+            else
+                inner.BackgroundTransparency = 1
+            end
         else
-            wrapper.LayoutOrder = index
+
+            inner.BackgroundTransparency = 1
+            wrapper.Visible = passesFilter[msgData] == true
         end
     end
 
-    ChatLogScrollFrame.CanvasSize = UDim2.new(0,0,0,UIListLayout.AbsoluteContentSize.Y)
+    for msgData, wrapper in pairs(displayedWrappers) do
+        if not table.find(ChatMessages, msgData) then
+            wrapper:Destroy()
+            displayedWrappers[msgData] = nil
+        end
+    end
+
+    ChatLogScrollFrame.CanvasSize = UDim2.new(0, 0, 0, UIListLayout.AbsoluteContentSize.Y)
     if shouldAutoScroll then
         local y = math.max(0, UIListLayout.AbsoluteContentSize.Y - ChatLogScrollFrame.AbsoluteSize.Y)
         ChatLogScrollFrame.CanvasPosition = Vector2.new(0, y)
@@ -540,6 +611,65 @@ local function toggleHelpPanel()
             end
         end
         populateHelpContent()
+    end
+end
+
+local function copyChatsToClipboard()
+    local textToCopy = ""
+
+    if colorCodingEnabled then
+        for _, msgData in ipairs(FilteredMessages) do
+            textToCopy = textToCopy .. string.format("[%s] [%s] [%s]: %s\n", 
+                msgData.timeStamp, 
+                msgData.teamName, 
+                msgData.playerName, 
+                msgData.message)
+        end
+    else 
+        for _, msgData in ipairs(FilteredMessages) do
+            textToCopy = textToCopy .. string.format("[%s] [%s]: %s\n", 
+                msgData.timeStamp,  
+                msgData.playerName, 
+                msgData.message)
+        end
+    end
+
+    if textToCopy == "" then
+        textToCopy = "No messages to copy."
+    end
+
+    pcall(function()
+        setclipboard(textToCopy)
+    end)
+
+    local originalColor = CopyButton.BackgroundColor3
+    CopyButton.Text = "Copied!"
+    task.wait(0.5)
+    CopyButton.Text = "Copy Chat"
+end
+
+local function toggleHighlight()
+    highlightEnabled = not highlightEnabled
+    HighlightButton.Text = "Highlight: " .. (highlightEnabled and "ON" or "OFF")
+    updateMessageDisplay()
+end
+
+local function toggleColorCoding()
+    colorCodingEnabled = not colorCodingEnabled
+    ColorToggleButton.Text = "Colors: " .. (colorCodingEnabled and "ON" or "OFF")
+
+    for _, wrapper in pairs(displayedWrappers) do
+        local inner = wrapper:FindFirstChild("InnerFrame")
+        local teamIndicator = inner and inner:FindFirstChild("TeamColorIndicator")
+        if teamIndicator then
+            teamIndicator.Visible = colorCodingEnabled
+        end
+
+        local label = inner and inner:FindFirstChild("PlayerAndMessage")
+        if label then
+            local xOffset = colorCodingEnabled and 53 or 45
+            label.Position = UDim2.new(0, xOffset, 0, 2)
+        end
     end
 end
 
@@ -601,9 +731,30 @@ local function initChatLogger()
         mouse.Icon = ""
     end))
 
-    track(HelpButton.MouseButton1Click:Connect(function()
-        toggleHelpPanel()
-    end))
+    track(HelpButton.MouseButton1Click:Connect(toggleHelpPanel))
+
+    track(ColorToggleButton.MouseButton1Click:Connect(toggleColorCoding))
+
+    track(CopyButton.MouseButton1Click:Connect(copyChatsToClipboard))
+
+    track(HighlightButton.MouseButton1Click:Connect(toggleHighlight))
+
+    local buttons = {ColorToggleButton, CopyButton, HighlightButton}
+    for _, button in ipairs(buttons) do
+        track(button.MouseEnter:Connect(function()
+            mouse.Icon = "rbxasset://SystemCursors/PointingHand"
+            TweenService:Create(button, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(70, 70, 72)
+            }):Play()
+        end))
+
+        track(button.MouseLeave:Connect(function()
+            mouse.Icon = ""
+            TweenService:Create(button, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(50, 50, 52)
+            }):Play()
+        end))
+    end
 
     local dragging = false
     local dragStart
