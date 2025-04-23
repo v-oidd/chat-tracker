@@ -115,11 +115,15 @@ SearchBar.Text = ""
 SearchBar.PlaceholderText = "Search..."
 SearchBar.TextColor3 = Color3.fromRGB(240, 240, 240)
 SearchBar.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
-SearchBar.TextSize = 14
 SearchBar.Font = Enum.Font.SourceSans
 SearchBar.TextXAlignment = Enum.TextXAlignment.Left
 SearchBar.ClearTextOnFocus = false
+SearchBar.TextScaled = true
 SearchBar.Parent = SearchBarFrame
+
+local sizeConst = Instance.new("UITextSizeConstraint")
+sizeConst.Parent = SearchBar
+sizeConst.MaxTextSize = 14
 
 local ChatLogScrollFrame = Instance.new("ScrollingFrame")
 ChatLogScrollFrame.Name = "ChatLogScrollFrame"
