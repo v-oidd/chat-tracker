@@ -8,7 +8,7 @@ local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
-getgenv().MAX_MESSAGES = MAX_MESSAGES or 500
+getgenv().MAX_MESSAGES = MAX_MESSAGES or 350
 
 local connections = {}
 
@@ -262,9 +262,7 @@ local function createChatMessageEntry(player, message, teamColor)
     }
 
     table.insert(ChatMessages, entry)
-    while #ChatMessages > getgenv().MAX_MESSAGES do
-        table.remove(ChatMessages, 1)
-    end
+
     return entry
 end
 
@@ -510,12 +508,22 @@ local function eval(node, msg)
 end
 
 local function applyFilters(searchText)
-
     if searchText:match("^%s*$") then
         FilteredMessages = {}
-        for _, msg in ipairs(ChatMessages) do
+
+        for i = #ChatMessages, 1, -1 do
+            local msg = ChatMessages[i]
             table.insert(FilteredMessages, msg)
+            if #FilteredMessages >= getgenv().MAX_MESSAGES then 
+                break
+            end
         end
+
+        for i = 1, math.floor(#FilteredMessages / 2) do
+            FilteredMessages[i], FilteredMessages[#FilteredMessages - i + 1] = 
+            FilteredMessages[#FilteredMessages - i + 1], FilteredMessages[i]
+        end
+
         return
     end
 
@@ -530,11 +538,20 @@ local function applyFilters(searchText)
     end
 
     FilteredMessages = {}
-    for _, msg in ipairs(ChatMessages) do
+
+    for i = #ChatMessages, 1, -1 do 
+        local msg = ChatMessages[i]
         if eval(tree, msg) then
             table.insert(FilteredMessages, msg)
         end
+        if #FilteredMessages >= getgenv().MAX_MESSAGES then break end 
+    end 
+
+    for i = 1, math.floor(#FilteredMessages / 2) do
+        FilteredMessages[i], FilteredMessages[#FilteredMessages - i + 1] = 
+        FilteredMessages[#FilteredMessages - i + 1], FilteredMessages[i]
     end
+
 end
 
 local displayedWrappers = {}
