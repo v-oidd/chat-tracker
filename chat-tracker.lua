@@ -258,7 +258,7 @@ local function createChatMessageEntry(player, message, teamColor)
     }
 
     table.insert(ChatMessages, entry)
-    if #ChatMessages > MAX_MESSAGES then
+    if #ChatMessages > getgenv().MAX_MESSAGES then
         table.remove(ChatMessages, 1)
     end
     return entry
