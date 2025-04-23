@@ -610,7 +610,7 @@ local function updateMessageDisplay()
     end
 
     for msgData, wrapper in pairs(displayedWrappers) do
-        if not table.find(ChatMessages, msgData) then
+        if not table.find(FilteredMessages, msgData) then
             wrapper:Destroy()
             displayedWrappers[msgData] = nil
         end
