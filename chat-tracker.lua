@@ -557,11 +557,14 @@ end
 local displayedWrappers = {}
 
 local function updateMessageDisplay()
-
+    local isOptimised = SearchBar.Text:match("^%s*$") ~= nil
     local passesFilter = {}
+
     for _, msg in ipairs(FilteredMessages) do
         passesFilter[msg] = true
     end
+
+    local latestMessage = FilteredMessages[#FilteredMessages]
 
     for idx, msgData in ipairs(ChatMessages) do
         local wrapper = displayedWrappers[msgData]
@@ -570,12 +573,13 @@ local function updateMessageDisplay()
             wrapper.Parent = ChatLogScrollFrame
             displayedWrappers[msgData] = wrapper
 
-            if not msgData.tweened then
-                local inner = wrapper:FindFirstChild("InnerFrame")
-                TweenService:Create(inner, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            local inner = wrapper:FindFirstChild("InnerFrame")
+            if msgData == latestMessage then
+                TweenService:Create(inner, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
                     Position = UDim2.new(0,0,0,0),
                 }):Play()
-                msgData.tweened = true
+            else
+                inner.Position = UDim2.new(0,0,0,0)
             end
         end
 
@@ -593,24 +597,23 @@ local function updateMessageDisplay()
             label.Position = UDim2.new(0, xOffset, 0, 2)
         end
 
-        if highlightEnabled then
-
+        if highlightEnabled and not isOptimised then
             wrapper.Visible = true
             if passesFilter[msgData] then
                 inner.BackgroundTransparency = 0.8
                 inner.BackgroundColor3 = Color3.fromRGB(255,255,0)
             else
                 inner.BackgroundTransparency = 1
+                inner.BackgroundColor3 = Color3.fromRGB(0,0,0)
             end
         else
-
             inner.BackgroundTransparency = 1
-            wrapper.Visible = passesFilter[msgData] == true
+            wrapper.Visible = isOptimised or passesFilter[msgData] == true
         end
     end
 
     for msgData, wrapper in pairs(displayedWrappers) do
-        if not table.find(FilteredMessages, msgData) then
+        if not table.find(ChatMessages, msgData) then
             wrapper:Destroy()
             displayedWrappers[msgData] = nil
         end
@@ -622,6 +625,8 @@ local function updateMessageDisplay()
         ChatLogScrollFrame.CanvasPosition = Vector2.new(0, y)
     end
 end
+
+
 
 local function toggleHelpPanel()
     HelpPanel.Visible = not HelpPanel.Visible
