@@ -599,7 +599,7 @@ local function updateMessageDisplay()
             label.Position = UDim2.new(0, xOffset, 0, 2)
         end
 
-        if highlightEnabled and not SearchBar.Text:match("^%s*$") and table.find(FilteredMessages, msgdata) then
+        if highlightEnabled and not SearchBar.Text:match("^%s*$") and table.find(FilteredMessages, msgData) then
             inner.BackgroundTransparency = 0.8
             inner.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
         else
