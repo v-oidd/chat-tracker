@@ -278,11 +278,7 @@ local function createMessageElement(messageData)
     local inner = Instance.new("Frame")
     inner.Name = "InnerFrame"
     inner.Size = UDim2.new(1, 0, 0, 20)
-    if messageData.tweened then
-        inner.Position = UDim2.new(0, 0, 0, 0)
-    else
-        inner.Position = UDim2.new(-1, 0, 0, 0)
-    end
+    inner.Position = UDim2.new(-1, 0, 0, 0)
     inner.BackgroundTransparency = 1
     inner.BorderSizePixel = 0
     inner.AutomaticSize = Enum.AutomaticSize.Y
@@ -514,9 +510,7 @@ local function applyFilters(searchText)
         for i = #ChatMessages, 1, -1 do
             local msg = ChatMessages[i]
             table.insert(FilteredMessages, msg)
-            if #FilteredMessages >= getgenv().MAX_MESSAGES then 
-                break
-            end
+            if #FilteredMessages >= getgenv().MAX_MESSAGES then break end
         end
 
         for i = 1, math.floor(#FilteredMessages / 2) do
@@ -551,22 +545,29 @@ local function applyFilters(searchText)
         FilteredMessages[i], FilteredMessages[#FilteredMessages - i + 1] = 
         FilteredMessages[#FilteredMessages - i + 1], FilteredMessages[i]
     end
+end
 
+local function tail(list, n)
+    local len = #list
+    local start = math.max(1, len - n + 1)
+    local out = {}
+    for i = start, len do
+        out[#out + 1] = list[i]
+    end
+    return out
 end
 
 local displayedWrappers = {}
 
 local function updateMessageDisplay()
-    local isOptimised = SearchBar.Text:match("^%s*$") ~= nil
-    local passesFilter = {}
+    local baseList = highlightEnabled and tail(ChatMessages, getgenv().MAX_MESSAGES) or FilteredMessages
 
-    for _, msg in ipairs(FilteredMessages) do
+    local passesFilter = {}
+    for _, msg in ipairs(baseList) do
         passesFilter[msg] = true
     end
 
-    local latestMessage = FilteredMessages[#FilteredMessages]
-
-    for idx, msgData in ipairs(ChatMessages) do
+    for idx, msgData in ipairs(baseList) do
         local wrapper = displayedWrappers[msgData]
         if not wrapper then
             wrapper = createMessageElement(msgData)
@@ -574,16 +575,17 @@ local function updateMessageDisplay()
             displayedWrappers[msgData] = wrapper
 
             local inner = wrapper:FindFirstChild("InnerFrame")
-            if msgData == latestMessage then
+            if msgData == ChatMessages[#ChatMessages] then
                 TweenService:Create(inner, TweenInfo.new(0.3, Enum.EasingStyle.Quad), {
-                    Position = UDim2.new(0,0,0,0),
+                    Position = UDim2.new(0, 0, 0, 0),
                 }):Play()
             else
-                inner.Position = UDim2.new(0,0,0,0)
+                inner.Position = UDim2.new(0, 0, 0, 0)
             end
         end
 
         wrapper.LayoutOrder = idx
+        wrapper.Visible = true
 
         local inner = wrapper:FindFirstChild("InnerFrame")
         local indicator = inner:FindFirstChild("TeamColorIndicator")
@@ -597,23 +599,16 @@ local function updateMessageDisplay()
             label.Position = UDim2.new(0, xOffset, 0, 2)
         end
 
-        if highlightEnabled and not isOptimised then
-            wrapper.Visible = true
-            if passesFilter[msgData] then
-                inner.BackgroundTransparency = 0.8
-                inner.BackgroundColor3 = Color3.fromRGB(255,255,0)
-            else
-                inner.BackgroundTransparency = 1
-                inner.BackgroundColor3 = Color3.fromRGB(0,0,0)
-            end
+        if highlightEnabled and not SearchBar.Text:match("^%s*$") and table.find(FilteredMessages, msgdata) then
+            inner.BackgroundTransparency = 0.8
+            inner.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
         else
             inner.BackgroundTransparency = 1
-            wrapper.Visible = isOptimised or passesFilter[msgData] == true
         end
     end
 
     for msgData, wrapper in pairs(displayedWrappers) do
-        if not table.find(ChatMessages, msgData) then
+        if not passesFilter[msgData] then
             wrapper:Destroy()
             displayedWrappers[msgData] = nil
         end
@@ -625,7 +620,6 @@ local function updateMessageDisplay()
         ChatLogScrollFrame.CanvasPosition = Vector2.new(0, y)
     end
 end
-
 
 
 local function toggleHelpPanel()
