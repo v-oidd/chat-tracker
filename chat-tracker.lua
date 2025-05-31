@@ -192,6 +192,13 @@ local function track(conn)
     return conn 
 end
 
+local function getPlayerPosition(player)
+    if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        return player.Character.HumanoidRootPart.Position
+    end
+    return nil
+end
+
 local function createHelpSection(title, content, layoutOrder)
     local section = Instance.new("Frame")
     section.Name = "HelpSection_" .. title:gsub("%s+", "")
@@ -234,13 +241,15 @@ end
 local function populateHelpContent()
     createHelpSection("Basic Usage", "Press Shift+B to toggle the window\nDrag the title bar to move the window", 1)
 
-    createHelpSection("Search Filters", "You can use special filters in the search bar:\n• Type text to find messages containing that text\n• Use quotes for phrases: \"hello world\"\n• Team filter: %team (e.g., %red)\n• Player filter: ?name (e.g., ?john)\n• Word filter: *word (matches whole word only)", 2)
+    createHelpSection("Search Filters", "You can use special filters in the search bar:\n• Type text to find messages containing that text\n• Use quotes for phrases: \"hello world\"\n• Team filter: %team (e.g., %red)\n• Player filter: ?name (e.g., ?john)\n• Word filter: *word (matches whole word only)\n• Proximity filter: ~distance (e.g., ~50)", 2)
 
     createHelpSection("Search Operators", "Combine search terms with operators:\n• AND: requires both terms (e.g., hello AND world)\n• OR: matches either term (e.g., hello OR world)\n• NOT: excludes matches (e.g., hello AND NOT world)\n• Parentheses for grouping: (hello OR hi) AND world\nMultiple terms have an implicit OR between them\nSearches are case insensitive, except operators must be UPPERCASE", 3)
 
-    createHelpSection("Examples", "• Find messages from RedTeam: %red\n• Find messages from player starting with \"J\": ?j\n• Find \"hello\" but not \"world\": hello AND NOT world\n• Find messages about food from Team Red: %red AND (pizza OR burger)", 4)
+    createHelpSection("Examples", "• Find messages from RedTeam: %red\n• Find messages from player starting with \"J\": ?j\n• Find \"hello\" but not \"world\": hello AND NOT world\n• Find messages about food from Team Red: %red AND (pizza OR burger)\n• Find messages from players within 100 studs: ~100", 4)
 
-    createHelpSection("Controls", "• Colors: Toggle team color indicators\n• Copy Chat: Copy filtered messages to clipboard\n• Highlight: Toggle highlighting of filtered messages", 5)
+    createHelpSection("Proximity Filter", "The proximity filter (~n) shows messages from players who were within n studs of you when they sent the message:\n• ~50: players within 50 studs\n• ~500: players within 500 studs\n• The distance is calculated using positions at the time the message was sent, not current positions", 5)
+
+    createHelpSection("Controls", "• Colors: Toggle team color indicators\n• Copy Chat: Copy filtered messages to clipboard\n• Highlight: Toggle highlighting of filtered messages", 6)
 
     HelpScrollFrame.CanvasSize = UDim2.new(0, 0, 0, HelpContentLayout.AbsoluteContentSize.Y + 10)
 end
@@ -249,16 +258,20 @@ local function createChatMessageEntry(player, message, teamColor)
     local timeStamp = os.date("%H:%M:%S")
     local teamName = player.Team and player.Team.Name or "No Team"
     local teamColorValue = teamColor or Color3.fromRGB(200, 200, 200)
+    local senderPosition = getPlayerPosition(player)
+    local localPlayerPosition = getPlayerPosition(LocalPlayer)
 
     local entry = {
-        playerName   = player.Name,
-        displayName  = player.DisplayName,
-        message      = message,
-        teamName     = teamName,
-        teamColor    = teamColorValue,
-        timeStamp    = timeStamp,
-        layoutOrder  = #ChatMessages + 1,
-        tweened      = false,
+        playerName           = player.Name,
+        displayName          = player.DisplayName,
+        message              = message,
+        teamName             = teamName,
+        teamColor            = teamColorValue,
+        timeStamp            = timeStamp,
+        layoutOrder          = #ChatMessages + 1,
+        tweened              = false,
+        senderPosition       = senderPosition,
+        localPlayerPosition  = localPlayerPosition,
     }
 
     table.insert(ChatMessages, entry)
@@ -333,7 +346,7 @@ local function tokenize(str)
         if c:match("%s") then
             i = i + 1
 
-        elseif (c == "%" or c == "?" or c == "*")
+        elseif (c == "%" or c == "?" or c == "*" or c == "~")
                and (str:sub(i+1,i+1) == '"' or str:sub(i+1,i+1) == "'") then
             local prefix = c
             local quote  = str:sub(i+1,i+1)
@@ -480,10 +493,18 @@ local function matchTerm(msg, raw)
         local dn = msg.displayName:lower()
         return pl:match("^"..term) or dn:match("^"..term)
     elseif pfx == "*" then
-
         return msg.message:lower():find("%f[%w]"..term.."%f[%W]")
-    else
+    elseif pfx == "~" then
+        local distance = tonumber(term)
+        if not distance then return false end
 
+        if not msg.senderPosition or not msg.localPlayerPosition then
+            return false
+        end
+
+        local actualDistance = (msg.senderPosition - msg.localPlayerPosition).Magnitude
+        return actualDistance <= distance
+    else
         term = raw:lower()
         return msg.message:lower():find(term,1,true)
     end
