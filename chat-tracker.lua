@@ -199,6 +199,28 @@ local function getPlayerPosition(player)
     return nil
 end
 
+local function getAllPlayersPositions()
+    local positions = {}
+    for _, player in pairs(Players:GetPlayers()) do
+        local position = getPlayerPosition(player)
+        if position then
+            positions[player.Name:lower()] = {
+                position = position,
+                playerName = player.Name,
+                displayName = player.DisplayName
+            }
+            if player.DisplayName ~= player.Name then
+                positions[player.DisplayName:lower()] = {
+                    position = position,
+                    playerName = player.Name,
+                    displayName = player.DisplayName
+                }
+            end
+        end
+    end
+    return positions
+end
+
 local function createHelpSection(title, content, layoutOrder)
     local section = Instance.new("Frame")
     section.Name = "HelpSection_" .. title:gsub("%s+", "")
@@ -241,13 +263,13 @@ end
 local function populateHelpContent()
     createHelpSection("Basic Usage", "Press Shift+B to toggle the window\nDrag the title bar to move the window", 1)
 
-    createHelpSection("Search Filters", "You can use special filters in the search bar:\n• Type text to find messages containing that text\n• Use quotes for phrases: \"hello world\"\n• Team filter: %team (e.g., %red)\n• Player filter: ?name (e.g., ?john)\n• Word filter: *word (matches whole word only)\n• Proximity filter: ~distance (e.g., ~50)", 2)
+    createHelpSection("Search Filters", "You can use special filters in the search bar:\n• Type text to find messages containing that text\n• Use quotes for phrases: \"hello world\"\n• Team filter: %team (e.g., %red)\n• Player filter: ?name (e.g., ?john)\n• Word filter: *word (matches whole word only)\n• Proximity filter: ~distance (e.g., ~50)\n• Player proximity: player~distance (e.g., john~100)", 2)
 
     createHelpSection("Search Operators", "Combine search terms with operators:\n• AND: requires both terms (e.g., hello AND world)\n• OR: matches either term (e.g., hello OR world)\n• NOT: excludes matches (e.g., hello AND NOT world)\n• Parentheses for grouping: (hello OR hi) AND world\nMultiple terms have an implicit OR between them\nSearches are case insensitive, except operators must be UPPERCASE", 3)
 
-    createHelpSection("Examples", "• Find messages from RedTeam: %red\n• Find messages from player starting with \"J\": ?j\n• Find \"hello\" but not \"world\": hello AND NOT world\n• Find messages about food from Team Red: %red AND (pizza OR burger)\n• Find messages from players within 100 studs: ~100", 4)
+    createHelpSection("Examples", "• Find messages from RedTeam: %red\n• Find messages from player starting with \"J\": ?j\n• Find \"hello\" but not \"world\": hello AND NOT world\n• Find messages about food from Team Red: %red AND (pizza OR burger)\n• Find messages from players within 100 studs of you: ~100\n• Find messages from players within 50 studs of john: john~50", 4)
 
-    createHelpSection("Proximity Filter", "The proximity filter (~n) shows messages from players who were within n studs of you when they sent the message:\n• ~50: players within 50 studs\n• ~500: players within 500 studs\n• The distance is calculated using positions at the time the message was sent, not current positions", 5)
+    createHelpSection("Proximity Filter", "The proximity filter shows messages from players who were within specified distance when they sent the message:\n• ~50: players within 50 studs of you\n• john~100: players within 100 studs of player \"john\"\n• Player names can be partial (e.g., \"j~50\" matches \"john\")\n• Uses positions at the time the message was sent, not current positions\n• If no matching player is found for player~distance, no results are shown", 5)
 
     createHelpSection("Controls", "• Colors: Toggle team color indicators\n• Copy Chat: Copy filtered messages to clipboard\n• Highlight: Toggle highlighting of filtered messages", 6)
 
@@ -260,6 +282,7 @@ local function createChatMessageEntry(player, message, teamColor)
     local teamColorValue = teamColor or Color3.fromRGB(200, 200, 200)
     local senderPosition = getPlayerPosition(player)
     local localPlayerPosition = getPlayerPosition(LocalPlayer)
+    local allPlayerPositions = getAllPlayersPositions()
 
     local entry = {
         playerName           = player.Name,
@@ -272,6 +295,7 @@ local function createChatMessageEntry(player, message, teamColor)
         tweened              = false,
         senderPosition       = senderPosition,
         localPlayerPosition  = localPlayerPosition,
+        allPlayerPositions   = allPlayerPositions,
     }
 
     table.insert(ChatMessages, entry)
@@ -484,6 +508,40 @@ local function matchTerm(msg, raw)
         return msg.message:lower():find(raw:lower(),1,true) ~= nil
     end
 
+    local tildePos = raw:find("~")
+    if tildePos then
+        local playerPart = raw:sub(1, tildePos - 1)
+        local distancePart = raw:sub(tildePos + 1)
+        local distance = tonumber(distancePart)
+        
+        if not distance then return false end
+
+        if playerPart == "" then
+            if not msg.senderPosition or not msg.localPlayerPosition then
+                return false
+            end
+            local actualDistance = (msg.senderPosition - msg.localPlayerPosition).Magnitude
+            return actualDistance <= distance
+        else
+            local targetPlayerData = nil
+            local searchTerm = playerPart:lower()
+
+            for playerKey, playerData in pairs(msg.allPlayerPositions) do
+                if playerKey:match("^"..searchTerm) then
+                    targetPlayerData = playerData
+                    break
+                end
+            end
+            
+            if not targetPlayerData or not targetPlayerData.position or not msg.senderPosition then
+                return false
+            end
+            
+            local actualDistance = (msg.senderPosition - targetPlayerData.position).Magnitude
+            return actualDistance <= distance
+        end
+    end
+
     local pfx = raw:sub(1,1)
     local term = raw:sub(2):lower()
     if     pfx == "%" then
@@ -494,16 +552,6 @@ local function matchTerm(msg, raw)
         return pl:match("^"..term) or dn:match("^"..term)
     elseif pfx == "*" then
         return msg.message:lower():find("%f[%w]"..term.."%f[%W]")
-    elseif pfx == "~" then
-        local distance = tonumber(term)
-        if not distance then return false end
-
-        if not msg.senderPosition or not msg.localPlayerPosition then
-            return false
-        end
-
-        local actualDistance = (msg.senderPosition - msg.localPlayerPosition).Magnitude
-        return actualDistance <= distance
     else
         term = raw:lower()
         return msg.message:lower():find(term,1,true)
