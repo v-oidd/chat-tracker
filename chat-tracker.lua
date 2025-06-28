@@ -891,7 +891,7 @@ local function initChatLogger()
         end
     end))
 
-    ChatLoggerGui.Parent = CoreGui
+    ChatLoggerGui.Parent = gethui and gethui() or CoreGui
 end
 
 initChatLogger()
